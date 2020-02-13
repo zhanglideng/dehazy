@@ -12,7 +12,7 @@ def set_style(name, height, bold=False):
     return style
 
 
-def write_excel(sheet, data_type, line, epoch, itr, loss, itr_to_excel, lr):
+def write_excel(sheet, data_type, line, epoch, itr, loss):
     # 在train页中保留train的数据，在validation页中保留validation的数据
     # 通过excel保存训练结果（训练集验证集loss，学习率，训练时间，总训练时间]
     """
@@ -25,6 +25,7 @@ def write_excel(sheet, data_type, line, epoch, itr, loss, itr_to_excel, lr):
     :param itr_to_excel:
     :param lr:
     :return:
+    一共有11个loss
     train=["EPOCH", "ITR", "L2_LOSS", "SSIM_LOSS", "LOSS", "LR"]
     val=["EPOCH", "L2_LOSS", "SSIM_LOSS", "LOSS", "PSNR", "SSIM", "LR"]
     """
@@ -33,17 +34,15 @@ def write_excel(sheet, data_type, line, epoch, itr, loss, itr_to_excel, lr):
         sheet.write(line, 0, epoch + 1)
         sheet.write(line, 1, itr + 1)
         for i in range(5):
-            sheet.write(line, i + 2, round(loss[i] / itr_to_excel, 4))
+            sheet.write(line, i + 2, round(loss[i], 4))
             sum_loss += loss[i]
-        sheet.write(line, 7, round(sum_loss / itr_to_excel, 4))
-        sheet.write(line, 8, lr)
+        sheet.write(line, 14, round(sum_loss, 4))
     else:
         sheet.write(line, 0, epoch + 1)
         for i in range(5):
             sheet.write(line, i + 1, round(loss[i], 4))
             sum_loss += loss[i]
-        sheet.write(line, 6, round(sum_loss, 4))
-        sheet.write(line, 7, lr)
+        sheet.write(line, 13, round(sum_loss, 4))
     return line + 1
 
 
@@ -52,9 +51,12 @@ def init_excel():
     sheet1 = workbook.add_sheet('train', cell_overwrite_ok=True)
     sheet2 = workbook.add_sheet('val', cell_overwrite_ok=True)
     # 通过excel保存训练结果（训练集验证集loss，学习率，训练时间，总训练时间）
-    row0 = ["EPOCH", "ITR", "dehaze_l2_loss", "dehaze_ssim_loss", "re_l2_loss", "re_ssim_loss", "l2_sf_loss", "loss",
-            "LR"]
-    row1 = ["EPOCH", "dehaze_l2_loss", "dehaze_ssim_loss", "re_l2_loss", "re_ssim_loss", "l2_sf_loss", "LOSS", "LR"]
+    row0 = ["EPOCH", "ITR", "At_J_l2", "At_J_ssim", "At_A_l2", "At_t_l2", "At_t_ssim",
+            "ed_re_l2", "ed_re_ssim", "ed_dehaze_l2", "ed_dehaze_ssim", "ed_sc_l2",
+            "ed_I_l2", "ed_I_ssim", "loss"]
+    row1 = ["EPOCH", "At_J_l2", "At_J_ssim", "At_A_l2", "At_t_l2", "At_t_ssim",
+            "ed_re_l2", "ed_re_ssim", "ed_dehaze_l2", "ed_dehaze_ssim", "ed_sc_l2",
+            "ed_I_l2", "ed_I_ssim", "loss"]
     for i in range(0, len(row0)):
         print('写入train_excel')
         sheet1.write(0, i, row0[i], set_style('Times New Roman', 220, True))
