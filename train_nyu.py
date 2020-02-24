@@ -19,7 +19,7 @@ import os
 
 ednet_LR = 0.004  # 学习率
 Atnet_LR = 0.0004  # 学习率
-EPOCH = 100  # 轮次
+EPOCH = 20  # 轮次
 BATCH_SIZE = 2  # 批大小
 excel_train_line = 1  # train_excel写入的行的下标
 excel_val_line = 1  # val_excel写入的行的下标
@@ -36,10 +36,12 @@ train_haze_path = '/input/data/nyu/train/'  # 去雾训练集的路径
 val_haze_path = '/input/data/nyu/val/'  # 去雾验证集的路径
 gt_path = '/input/data/nyu/gth/'
 t_path = '/input/data/nyu/depth/'
-save_path = './result_' + time.strftime("%Y_%m_%d_%H_%M_%S", time.localtime()) + '/'
-save_model_name = save_path + 'nyu_model.pt'  # 保存模型的路径
+save_path = './result_nyu_' + time.strftime("%Y_%m_%d_%H_%M_%S", time.localtime()) + '/'
+save_model_ed_name = save_path + 'ed_model.pt'  # 保存模型的路径
+save_model_At_name = save_path + 'At_model.pt'  # 保存模型的路径
 excel_save = save_path + 'result.xls'  # 保存excel的路径
-
+mid_save_ed_path = './mid_model/ednet_model.pt'  # 保存的中间模型，用于下一步ntire数据的训练。
+mid_save_At_path = './mid_model/Atnet_model.pt'
 # 初始化excel
 f, sheet_train, sheet_val = init_excel()
 # 加载模型
@@ -86,7 +88,7 @@ for epoch in range(EPOCH):
         itr += 1
         J, A, t = Atnet(haze)
         output, gt_scene, I = ednet(gt, A_gt, t_gt)
-        dehaze, hazy_scene, I = ednet(haze, A_haze, t_haze)
+        dehaze, hazy_scene, I = ednet(haze, A, t)
         # 分批计算loss，以防现存溢出。
         loss_image = [gt, A_haze, t_haze, J, A, t]
         loss, temp_loss = loss_At_function(loss_image, weight_At)
@@ -157,6 +159,9 @@ for epoch in range(EPOCH):
     if val_epoch_loss < min_loss:
         min_loss = val_epoch_loss
         min_epoch = epoch
-        torch.save(net, save_path)
+        torch.save(ednet, save_model_ed_name)
+        torch.save(Atnet, save_model_At_name)
+        torch.save(ednet, mid_save_ed_path)
+        torch.save(Atnet, mid_save_At_path)
         print('saving the epoch %d model with %.5f' % (epoch + 1, min_loss))
 print('Train is Done!')
