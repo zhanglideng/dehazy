@@ -10,7 +10,7 @@ import numpy as np
 from utils.loss import *
 from utils.print_time import *
 from utils.save_log_to_excel import *
-from dataloader_nyu import EdDataSet
+from dataloader_nyu import nyu_DataSet
 from Res_ED_model import *
 import time
 import xlwt
@@ -32,10 +32,10 @@ loss_num = 12  # loss的数量。重建损失2个,At网络5个,去雾损失（�
 weight_At = [1, 1, 1, 1, 1]
 weight_ed = [1, 1, 1, 1, 0.01]
 weight_recon = [1, 1]
-train_haze_path = '/input/data/nyu/train/'  # 去雾训练集的路径
-val_haze_path = '/input/data/nyu/val/'  # 去雾验证集的路径
-gt_path = '/input/data/nyu/gth/'
-t_path = '/input/data/nyu/depth/'
+train_haze_path = '/home/aistudio/work/nyu/train/'  # 去雾训练集的路径
+val_haze_path = '/home/aistudio/work/nyu/val/'  # 去雾验证集的路径
+gt_path = '/home/aistudio/work/nyu/gth/'
+d_path = '/home/aistudio/work/nyu/depth/'
 save_path = './result_nyu_' + time.strftime("%Y_%m_%d_%H_%M_%S", time.localtime()) + '/'
 save_model_ed_name = save_path + 'ed_model.pt'  # 保存模型的路径
 save_model_At_name = save_path + 'At_model.pt'  # 保存模型的路径

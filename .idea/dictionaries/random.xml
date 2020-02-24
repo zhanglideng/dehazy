@@ -3,9 +3,11 @@
     <words>
       <w>aistudio</w>
       <w>atnet</w>
+      <w>deconv</w>
       <w>dehaze</w>
       <w>ednet</w>
       <w>optim</w>
+      <w>relu</w>
       <w>ssim</w>
     </words>
   </dictionary>

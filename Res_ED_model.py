@@ -94,9 +94,9 @@ class DeCoder(nn.Module):
         super(DeCoder, self).__init__()
         self.relu = nn.PReLU()
         self.d_res_block = D_ResBlock()
-        self.deconv1 = nn.ConvTranspose2d(64, 128, 3, stride=2, padding=1, dilation=1, output_padding=1)
-        self.deconv2 = nn.ConvTranspose2d(128, 64, 5, stride=2, padding=2, dilation=1, output_padding=1)
-        self.deconv3 = nn.ConvTranspose2d(64, 3, 5, stride=2, padding=2, dilation=1, output_padding=1)
+        self.deconv1 = nn.ConvTranspose2d(66, 128, 3, stride=2, padding=1, dilation=1, output_padding=1)
+        self.deconv2 = nn.ConvTranspose2d(130, 64, 5, stride=2, padding=2, dilation=1, output_padding=1)
+        self.deconv3 = nn.ConvTranspose2d(66, 3, 5, stride=2, padding=2, dilation=1, output_padding=1)
 
         self.bn64 = nn.BatchNorm2d(64)
         self.bn128 = nn.BatchNorm2d(128)
