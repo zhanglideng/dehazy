@@ -20,7 +20,7 @@ import os
 ednet_LR = 0.004  # 学习率
 Atnet_LR = 0.0004  # 学习率
 EPOCH = 20  # 轮次
-BATCH_SIZE = 2  # 批大小
+BATCH_SIZE = 4  # 批大小
 excel_train_line = 1  # train_excel写入的行的下标
 excel_val_line = 1  # val_excel写入的行的下标
 alpha = 1  # 损失函数的权重
@@ -53,6 +53,11 @@ ednet = ednet.cuda()
 Atnet = Atnet.cuda()
 # print(ednet)
 # print(Atnet)
+print(save_path)
+if not os.path.exists(save_path):
+    os.makedirs(save_path)
+if not os.path.exists('./mid_model/'):
+    os.makedirs('./mid_model/')
 for param in ednet.decoder.parameters():
     param.requires_grad = False
 
@@ -92,27 +97,30 @@ for epoch in range(EPOCH):
         # 分批计算loss，以防现存溢出。
         loss_image = [gt, A_haze, t_haze, J, A, t]
         loss, temp_loss = loss_At_function(loss_image, weight_At)
-        loss_excel = [loss_excel[i] + temp_loss[i] for i in range(len(loss_excel))]
+        for i in range(len(temp_loss)):
+            loss_excel[i] = loss_excel[i] + temp_loss[i]
         loss = loss / accumulation_steps
-        loss.backward()
+        loss.backward(retain_graph=True)
 
         loss_image = [output, gt, dehaze, gt_scene, hazy_scene]
         loss, temp_loss = loss_ed_function(loss_image, weight_ed)
-        loss_excel = [loss_excel[i + 5] + temp_loss[i] for i in range(len(loss_excel))]
+        for i in range(len(temp_loss)):
+            loss_excel[i + 5] = loss_excel[i + 5] + temp_loss[i]
         loss = loss / accumulation_steps
-        loss.backward()
+        loss.backward(retain_graph=True)
 
         loss_image = [haze, I]
         loss, temp_loss = loss_recon_function(loss_image, weight_recon)
-        loss_excel = [loss_excel[i + 10] + temp_loss[i] for i in range(len(loss_excel))]
+        for i in range(len(temp_loss)):
+            loss_excel[i + 10] = loss_excel[i + 10] + temp_loss[i]
         loss = loss / accumulation_steps
         loss.backward()
 
-        # 3. update parameters of net
         if ((index + 1) % accumulation_steps) == 0:
-            # optimizer the net
-            optimizer.step()  # update parameters of net
-            optimizer.zero_grad()  # reset gradient
+            ednet_optim.step()
+            Atnet_optim.step()
+            ednet_optim.zero_grad()
+            Atnet_optim.zero_grad()
         if np.mod(index, itr_to_excel) == 0:
             loss_excel = [loss_excel[i] / itr_to_excel for i in range(len(loss_excel))]
             print('epoch %d, %03d/%d, loss=%.5f' % (epoch + 1, index, len(train_data_loader), sum(loss_excel)))
@@ -125,8 +133,10 @@ for epoch in range(EPOCH):
                                            loss=loss_excel)
             f.save(excel_save)
             loss_excel = [0] * loss_num
-    optimizer.step()
-    optimizer.zero_grad()
+    ednet_optim.step()
+    Atnet_optim.step()
+    ednet_optim.zero_grad()
+    Atnet_optim.zero_grad()
     loss_excel = [0] * loss_num
     with torch.no_grad():
         for haze, gt, A_haze, A_gt, t_haze, t_gt in val_data_loader:
@@ -136,18 +146,21 @@ for epoch in range(EPOCH):
 
             loss_image = [gt, A_haze, t_haze, J, A, t]
             loss, temp_loss = loss_At_function(loss_image, weight_At)
-            loss_excel = [loss_excel[i] + temp_loss[i] for i in range(len(loss_excel))]
+            for i in range(len(temp_loss)):
+                loss_excel[i] = loss_excel[i] + temp_loss[i]
 
             loss_image = [output, gt, dehaze, gt_scene, hazy_scene]
             loss, temp_loss = loss_ed_function(loss_image, weight_ed)
-            loss_excel = [loss_excel[i + 5] + temp_loss[i] for i in range(len(loss_excel))]
+            for i in range(len(temp_loss)):
+                loss_excel[i + 5] = loss_excel[i + 5] + temp_loss[i]
 
             loss_image = [haze, I]
             loss, temp_loss = loss_recon_function(loss_image, weight_recon)
-            loss_excel = [loss_excel[i + 10] + temp_loss[i] for i in range(len(loss_excel))]
+            for i in range(len(temp_loss)):
+                loss_excel[i + 10] = loss_excel[i + 10] + temp_loss[i]
 
-    val_epoch_loss = sum(loss_excel)
     loss_excel = [loss_excel[i] / len(val_data_loader) for i in range(len(loss_excel))]
+    val_epoch_loss = sum(loss_excel)
     print('val_epoch_loss = %.5f' % val_epoch_loss)
     excel_val_line = write_excel(sheet=sheet_val,
                                  data_type='val',

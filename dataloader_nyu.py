@@ -36,8 +36,8 @@ class nyu_DataSet(Dataset):
             (大气光)
             624, 464
         """
-        A_image = np.ones((608, 448, 1), dtype=np.float32)
-        A_gt = np.ones((608, 448, 1), dtype=np.float32)
+        A_image = np.ones((608, 448, 3), dtype=np.float32)
+        A_gt = np.ones((608, 448, 3), dtype=np.float32)
         t_gt = np.ones((608, 448, 1), dtype=np.float32)
         haze_image_name = self.haze_data_list[idx]
         haze_image = cv2.imread(self.haze_path + haze_image_name)
@@ -56,18 +56,20 @@ class nyu_DataSet(Dataset):
             A_gt = self.transform1(A_gt)
             t_image = self.transform1(t_image)
             t_gt = self.transform1(t_gt)
+        '''
         print(1)
-        print(haze_image.shape)
+        print(haze_image[0][0][0])
         print(2)
-        print(gt_image.shape)
+        print(gt_image[0][0][0])
         print(3)
-        print(A_image.shape)
+        print(A_image[0][0][0])
         print(4)
-        print(A_gt.shape)
+        print(A_gt[0][0][0])
         print(5)
-        print(t_image.shape)
+        print(t_image[0][0][0])
         print(6)
-        print(t_gt.shape)
+        print(t_gt[0][0][0])
+        '''
         return haze_image.cuda(), gt_image.cuda(), A_image.cuda(), A_gt.cuda(), t_image.cuda(), t_gt.cuda()
 
 # if __name__ == '__main__':
