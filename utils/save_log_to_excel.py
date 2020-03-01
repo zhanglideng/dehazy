@@ -22,8 +22,6 @@ def write_excel(sheet, data_type, line, epoch, itr, loss):
     :param epoch:
     :param itr:
     :param loss:
-    :param itr_to_excel:
-    :param lr:
     :return:
     一共有11个loss
     train=["EPOCH", "ITR", "L2_LOSS", "SSIM_LOSS", "LOSS", "LR"]
@@ -38,11 +36,15 @@ def write_excel(sheet, data_type, line, epoch, itr, loss):
             sum_loss += loss[i]
         sheet.write(line, 14, round(sum_loss, 4))
     else:
-        sheet.write(line, 0, epoch + 1)
-        for i in range(12):
-            sheet.write(line, i + 1, round(loss[i], 4))
-            sum_loss += loss[i]
-        sheet.write(line, 13, round(sum_loss, 4))
+        if len(loss) > 1:
+            sheet.write(line, 0, epoch + 1)
+            for i in range(12):
+                sheet.write(line, i + 1, round(loss[i], 4))
+                sum_loss += loss[i]
+            sheet.write(line, 13, round(sum_loss, 4))
+        else:
+            sheet.write(line, 0, epoch + 1)
+            sheet.write(line, 1, round(loss, 4))
     return line + 1
 
 

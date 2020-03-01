@@ -23,7 +23,6 @@ EPOCH = 20  # 轮次
 BATCH_SIZE = 4  # 批大小
 excel_train_line = 1  # train_excel写入的行的下标
 excel_val_line = 1  # val_excel写入的行的下标
-alpha = 1  # 损失函数的权重
 accumulation_steps = 2  # 梯度积累的次数，类似于batch-size=64
 itr_to_lr = 10000 // BATCH_SIZE  # 训练10000次后损失下降50%
 itr_to_excel = 64 // BATCH_SIZE  # 训练64次后保存相关数据到excel
@@ -32,6 +31,7 @@ loss_num = 12  # loss的数量。重建损失2个,At网络5个,去雾损失（�
 weight_At = [1, 1, 1, 1, 1]
 weight_ed = [1, 1, 1, 1, 0.01]
 weight_recon = [1, 1]
+weight = weight_At + weight_ed + weight_recon
 train_haze_path = '/home/aistudio/work/nyu/train/'  # 去雾训练集的路径
 val_haze_path = '/home/aistudio/work/nyu/val/'  # 去雾验证集的路径
 gt_path = '/home/aistudio/work/nyu/gth/'
@@ -51,9 +51,7 @@ ednet = torch.load(ednet_path)
 Atnet = torch.load(Atnet_path)
 ednet = ednet.cuda()
 Atnet = Atnet.cuda()
-# print(ednet)
-# print(Atnet)
-print(save_path)
+
 if not os.path.exists(save_path):
     os.makedirs(save_path)
 if not os.path.exists('./mid_model/'):
@@ -87,7 +85,11 @@ print("\nstart to train!")
 for epoch in range(EPOCH):
     index = 0
     loss = 0
+    train_loss = 0
+    val_loss = 0
     loss_excel = [0] * loss_num
+    ednet.train()
+    Atnet.train()
     for haze, gt, A_haze, A_gt, t_haze, t_gt in train_data_loader:
         index += 1
         itr += 1
@@ -97,6 +99,7 @@ for epoch in range(EPOCH):
         # 分批计算loss，以防现存溢出。
         loss_image = [gt, A_haze, t_haze, J, A, t]
         loss, temp_loss = loss_At_function(loss_image, weight_At)
+        train_loss += loss.item()
         for i in range(len(temp_loss)):
             loss_excel[i] = loss_excel[i] + temp_loss[i]
         loss = loss / accumulation_steps
@@ -104,6 +107,7 @@ for epoch in range(EPOCH):
 
         loss_image = [output, gt, dehaze, gt_scene, hazy_scene]
         loss, temp_loss = loss_ed_function(loss_image, weight_ed)
+        train_loss += loss.item()
         for i in range(len(temp_loss)):
             loss_excel[i + 5] = loss_excel[i + 5] + temp_loss[i]
         loss = loss / accumulation_steps
@@ -111,6 +115,7 @@ for epoch in range(EPOCH):
 
         loss_image = [haze, I]
         loss, temp_loss = loss_recon_function(loss_image, weight_recon)
+        train_loss += loss.item()
         for i in range(len(temp_loss)):
             loss_excel[i + 10] = loss_excel[i + 10] + temp_loss[i]
         loss = loss / accumulation_steps
@@ -139,6 +144,8 @@ for epoch in range(EPOCH):
     Atnet_optim.zero_grad()
     loss_excel = [0] * loss_num
     with torch.no_grad():
+        ednet.eval()
+        Atnet.eval()
         for haze, gt, A_haze, A_gt, t_haze, t_gt in val_data_loader:
             J, A, t = Atnet(haze)
             output, gt_scene, I = ednet(gt, A_gt, t_gt)
@@ -146,22 +153,30 @@ for epoch in range(EPOCH):
 
             loss_image = [gt, A_haze, t_haze, J, A, t]
             loss, temp_loss = loss_At_function(loss_image, weight_At)
+            val_loss += loss.item()
             for i in range(len(temp_loss)):
                 loss_excel[i] = loss_excel[i] + temp_loss[i]
 
             loss_image = [output, gt, dehaze, gt_scene, hazy_scene]
             loss, temp_loss = loss_ed_function(loss_image, weight_ed)
+            val_loss += loss.item()
             for i in range(len(temp_loss)):
                 loss_excel[i + 5] = loss_excel[i + 5] + temp_loss[i]
 
             loss_image = [haze, I]
             loss, temp_loss = loss_recon_function(loss_image, weight_recon)
+            val_loss += loss.item()
             for i in range(len(temp_loss)):
                 loss_excel[i + 10] = loss_excel[i + 10] + temp_loss[i]
 
     loss_excel = [loss_excel[i] / len(val_data_loader) for i in range(len(loss_excel))]
-    val_epoch_loss = sum(loss_excel)
-    print('val_epoch_loss = %.5f' % val_epoch_loss)
+    print('val_loss = %.5f' % val_loss)
+    excel_val_line = write_excel(sheet=sheet_val,
+                                 data_type='val',
+                                 line=excel_val_line,
+                                 epoch=epoch,
+                                 itr=False,
+                                 loss=train_loss)
     excel_val_line = write_excel(sheet=sheet_val,
                                  data_type='val',
                                  line=excel_val_line,
@@ -169,8 +184,8 @@ for epoch in range(EPOCH):
                                  itr=False,
                                  loss=loss_excel)
     f.save(excel_save)
-    if val_epoch_loss < min_loss:
-        min_loss = val_epoch_loss
+    if val_loss < min_loss:
+        min_loss = val_loss
         min_epoch = epoch
         torch.save(ednet, save_model_ed_name)
         torch.save(Atnet, save_model_At_name)
